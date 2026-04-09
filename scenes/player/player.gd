@@ -30,6 +30,7 @@ var immobile := false
 var is_dragging := false
 var drag_threshold := 10.0
 var drag_start := Vector2.ZERO
+var touch_consumed_click := false
 
 func _enter_tree() -> void:
 	set_multiplayer_authority(int(name))
@@ -41,6 +42,9 @@ func _ready():
 	arms_root.hide()
 	replicate_color_changed(player_ui.COLORS[0])
 	player_ui.hide()
+	
+	if OS.has_feature("mobile"):
+		_remap_attack_for_mobile()
 
 	if not is_multiplayer_authority():
 		set_process(false)
@@ -48,6 +52,16 @@ func _ready():
 		return
 	
 	ready_client_visuals()
+
+func _remap_attack_for_mobile():
+	# Remove all existing bindings for attack1
+	for event in InputMap.action_get_events("attack1"):
+		InputMap.action_erase_event("attack1", event)
+
+	# Add new binding (P key)
+	var key_event := InputEventKey.new()
+	key_event.physical_keycode = KEY_P
+	InputMap.action_add_event("attack1", key_event)
 
 func ready_client_visuals():
 	player_ui.show()
@@ -70,9 +84,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.pressed:
 			is_dragging = false
 			drag_start = event.position
+			touch_consumed_click = false
 		else:
 			# Only attack if it was a tap (not a drag)
 			if not is_dragging:
+				touch_consumed_click = true
 				attack(1)
 
 	if event is InputEventScreenDrag:
